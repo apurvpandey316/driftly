@@ -37,6 +37,15 @@ missing column `users.phone_number`, extra column `users.legacy_id`, `users.emai
 FK action on `projects.owner_id` (CASCADE vs NO ACTION). `projects_owner_idx` is written
 differently but is equivalent, so it must **not** be reported.
 
+## Compare two databases from the terminal (Part 1)
+With the Docker test databases running:
+```
+npm run compare -- "postgresql://postgres:postgres@localhost:5433/driftly_dev" "postgresql://postgres:postgres@localhost:5434/driftly_prod"
+```
+Options: `--schemas public,app` · `--exclude table1,public.table2` · `--ssl require` (needed for Supabase) ·
+`--json result.json` · `--csv result.csv` · `--test` (only test both connections).
+Exit code: 0 in parity, 1 differences found, 2 scan failed or partial.
+
 ## Layout
 ```
 src/app/        routes (dashboard, connections, comparisons, history, settings)
@@ -45,7 +54,8 @@ src/db/         Driftly's own database schema (Drizzle)
 src/engine/     comparison engine (standalone, no Next.js imports)
 src/lib/        crypto (AES-256-GCM credential encryption), utils
 dev-databases/  seeded test schemas
+scripts/        CLI tools (compare.ts)
 ```
 
 ## Build plan
-0. Setup ✅ · 1. Engine · 2. Shell + Connections · 3. New Comparison + Results · 4. Schema Explorer · 5. Dashboard
+0. Setup ✅ · 1. Engine ✅ · 2. Shell + Connections · 3. New Comparison + Results · 4. Schema Explorer · 5. Dashboard
