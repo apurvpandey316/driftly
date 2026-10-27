@@ -16,6 +16,9 @@
   --modified: #c79bf2;
   --ok: #4fc38a;
   --danger: #f26b6b;
+
+  /* Single-series chart mark, validated against --surface (dataviz validator) */
+  --chart-bar: #7b7cf0;
 }
 
 @theme inline {
@@ -31,6 +34,7 @@
   --color-modified: var(--modified);
   --color-ok: var(--ok);
   --color-danger: var(--danger);
+  --color-chart-bar: var(--chart-bar);
   --font-sans: "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 }

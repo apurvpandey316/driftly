@@ -311,6 +311,18 @@ function primaryKeyDiffs(ref: TableDef, tgt: TableDef): Difference[] {
   return [];
 }
 
+/** Readable summary of a whole table, used when the table exists on one side only. */
+function tableSummary(t: TableDef) {
+  return {
+    columns: Object.values(t.columns)
+      .sort((a, b) => a.position - b.position)
+      .map((c) => `${c.name} ${c.type}${c.nullable ? "" : " NOT NULL"}${c.default ? ` DEFAULT ${c.default}` : ""}`),
+    primaryKey: t.primaryKey ? t.primaryKey.columns : null,
+    foreignKeys: Object.keys(t.foreignKeys).length,
+    indexes: Object.keys(t.indexes).length,
+  };
+}
+
 // ---------- entry point ----------
 
 function skip(cat: ObjectCategory, scope: Required<ScanScope>, ref: Snapshot, tgt: Snapshot) {
@@ -366,7 +378,7 @@ export function diffSnapshots(ref: Snapshot, tgt: Snapshot, scope: Required<Scan
           ...base,
           kind: "missing",
           severity: "breaking",
-          expected: { columns: Object.keys(r.columns).length },
+          expected: tableSummary(r),
           actual: null,
           note: `Table ${key} exists in reference but was not found in target. Any query using it will fail.`,
           suggestedAction: `Create ${key} in target using the reference definition.`,
@@ -440,7 +452,7 @@ export function diffSnapshots(ref: Snapshot, tgt: Snapshot, scope: Required<Scan
         kind: "extra",
         severity: "info",
         expected: null,
-        actual: { columns: Object.keys(t.columns).length },
+        actual: tableSummary(t),
         note: `Table ${key} exists only in target.`,
         suggestedAction: "Add it to the reference definition if intended, or review whether it can be dropped.",
       }),

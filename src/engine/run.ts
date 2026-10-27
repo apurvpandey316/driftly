@@ -48,6 +48,19 @@ async function capture(
   }
 }
 
+/**
+ * Reads one database's normalized metadata (used by the Schema Explorer).
+ * Never throws for database problems: they come back as errors.
+ */
+export async function captureSnapshot(
+  config: ConnectionConfig,
+  scope: ScanScope,
+): Promise<{ snapshot: Snapshot | null; errors: ScanError[] }> {
+  const errors: ScanError[] = [];
+  const snapshot = await capture("target", config, resolveScope(scope), errors);
+  return { snapshot, errors };
+}
+
 export function summarize(status: ScanStatus, differences: Difference[]): ScanSummary {
   const bySeverity = { info: 0, warning: 0, breaking: 0 };
   let missing = 0, extra = 0, modified = 0;

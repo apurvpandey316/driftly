@@ -2,19 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Database, GitCompare, History, Bell, Settings } from "lucide-react";
+import { LayoutDashboard, Database, GitCompare, History, Bell, Settings, LogOut } from "lucide-react";
+import { signOut } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 
 const NAV = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/connections", label: "Connections", icon: Database },
   { href: "/comparisons", label: "Comparisons", icon: GitCompare },
-  { href: "/history", label: "Drift History", icon: History, soon: true },
+  { href: "/history", label: "Drift History", icon: History },
   { href: "/settings/monitoring", label: "Alerts", icon: Bell, soon: true },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar() {
+export function Sidebar({ userEmail }: { userEmail?: string }) {
   const pathname = usePathname();
   // Most specific match wins so /settings/monitoring doesn't also light up /settings
   const active = NAV.filter((n) => pathname === n.href || pathname.startsWith(n.href + "/"))
@@ -43,6 +44,17 @@ export function Sidebar() {
           </Link>
         ))}
       </nav>
+      {userEmail && (
+        <form action={signOut} className="mt-auto border-t border-border px-2 pt-3">
+          <p className="truncate text-xs text-muted" title={userEmail}>
+            {userEmail}
+          </p>
+          <button type="submit" className="mt-1.5 flex items-center gap-2 text-sm text-muted hover:text-text">
+            <LogOut size={14} aria-hidden />
+            Sign out
+          </button>
+        </form>
+      )}
     </aside>
   );
 }

@@ -51,6 +51,11 @@ export const scans = pgTable("scans", {
   workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
   referenceConnectionId: uuid("reference_connection_id").notNull().references(() => connections.id),
   targetConnectionId: uuid("target_connection_id").notNull().references(() => connections.id),
+  // Names as they were when the scan ran, so reopened results read the same even after renames.
+  referenceName: text("reference_name").notNull().default(""),
+  referenceEnvironment: text("reference_environment").notNull().default("custom"),
+  targetName: text("target_name").notNull().default(""),
+  targetEnvironment: text("target_environment").notNull().default("custom"),
   // Frozen copy of the scope (schemas, exclusions, object categories) used for this run
   scope: jsonb("scope").notNull(),
   status: scanStatusEnum("status").notNull().default("queued"),
@@ -59,6 +64,9 @@ export const scans = pgTable("scans", {
   targetSnapshot: jsonb("target_snapshot"),
   // Permission / read errors. Any entry here means the scan cannot claim full parity.
   errors: jsonb("errors").notNull().default([]),
+  warnings: jsonb("warnings").notNull().default([]),
+  // ScanSummary from the engine (counts by kind and severity, inParity)
+  summary: jsonb("summary"),
   missingCount: integer("missing_count").notNull().default(0),
   extraCount: integer("extra_count").notNull().default(0),
   modifiedCount: integer("modified_count").notNull().default(0),
@@ -70,17 +78,39 @@ export const scans = pgTable("scans", {
 export const differences = pgTable("differences", {
   id: uuid("id").primaryKey().defaultRandom(),
   scanId: uuid("scan_id").notNull().references(() => scans.id, { onDelete: "cascade" }),
+  // Stable id from the engine (kind:path:difference), used to track a difference across scans
+  diffKey: text("diff_key").notNull().default(""),
+  schemaName: text("schema_name").notNull().default(""),
+  tableName: text("table_name"),
   objectPath: text("object_path").notNull(), // e.g. public.users.phone_number
   objectKind: text("object_kind").notNull(), // schema | table | column | primary_key | foreign_key | unique | index
   kind: diffKindEnum("kind").notNull(),
   severity: severityEnum("severity").notNull().default("info"),
   expected: jsonb("expected"), // reference definition (null if extra)
   actual: jsonb("actual"), // target definition (null if missing)
+  changes: jsonb("changes").notNull().default([]), // which fields differ, for "modified"
   note: text("note"),
   suggestedAction: text("suggested_action"),
 });
 
-// Review actions are tracked separately so the scan itself stays immutable.
+// Acknowledgements are an append-only log keyed by pair + stable difference key,
+// so a review carries across scans. The latest row per key is the current state.
+// Acknowledging never changes scan results or parity.
+export const acknowledgements = pgTable("acknowledgements", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  workspaceId: uuid("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  referenceConnectionId: uuid("reference_connection_id").notNull().references(() => connections.id, { onDelete: "cascade" }),
+  targetConnectionId: uuid("target_connection_id").notNull().references(() => connections.id, { onDelete: "cascade" }),
+  diffKey: text("diff_key").notNull(),
+  status: reviewStatusEnum("status").notNull(),
+  note: text("note"),
+  // Scan the action was taken from, for the audit trail.
+  scanId: uuid("scan_id").references(() => scans.id, { onDelete: "set null" }),
+  actorId: text("actor_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Earlier per-scan review table; superseded by acknowledgements above. Unused.
 export const reviewActions = pgTable("review_actions", {
   id: uuid("id").primaryKey().defaultRandom(),
   differenceId: uuid("difference_id").notNull().references(() => differences.id, { onDelete: "cascade" }),

@@ -79,6 +79,8 @@ export interface ConnectionTestResult {
   schemasWithoutUsage: string[];
   /** Non-vendor schemas available to pick from. */
   availableSchemas: string[];
+  /** Advisory notes, e.g. the user has more privileges than Driftly needs. */
+  warnings: string[];
   error?: string;
 }
 
@@ -94,12 +96,33 @@ export async function testConnection(config: ConnectionConfig, schemas: string[]
     const byName = new Map(ns.rows.map((r) => [r.name, r.usage]));
     const missingSchemas = schemas.filter((s) => !byName.has(s));
     const schemasWithoutUsage = schemas.filter((s) => byName.get(s) === false);
+
+    // Driftly never writes, but least privilege is safer: flag users that could.
+    const warnings: string[] = [];
+    const role = await client.query<{ superuser: boolean; createdb: boolean }>(
+      "select rolsuper as superuser, rolcreatedb as createdb from pg_roles where rolname = current_user",
+    );
+    if (role.rows[0]?.superuser) {
+      warnings.push("This user is a superuser. Driftly only needs read access to catalog metadata; a read-only user is safer.");
+    } else {
+      const writable = await client.query<{ name: string }>(
+        `select n.nspname as name from pg_namespace n
+         where n.nspname = any($1) and has_schema_privilege(n.oid, 'CREATE')`,
+        [schemas],
+      );
+      if (writable.rows.length) {
+        warnings.push(
+          `This user can create objects in: ${writable.rows.map((r) => r.name).join(", ")}. Driftly never writes, but a read-only user is safer.`,
+        );
+      }
+    }
     return {
       ok: missingSchemas.length === 0 && schemasWithoutUsage.length === 0,
-      serverVersion: version.rows[0].v,
+      serverVersion: version.rows[0].v.split(" ")[0],
       missingSchemas,
       schemasWithoutUsage,
       availableSchemas: ns.rows.map((r) => r.name).filter((n) => !VENDOR_SCHEMAS.has(n) && !n.startsWith("pg_")),
+      warnings,
     };
   } catch (err) {
     return {
@@ -107,6 +130,7 @@ export async function testConnection(config: ConnectionConfig, schemas: string[]
       missingSchemas: [],
       schemasWithoutUsage: [],
       availableSchemas: [],
+      warnings: [],
       error: redact(err instanceof Error ? err.message : String(err)),
     };
   } finally {
