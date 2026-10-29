@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { workspaces } from "@/db/schema";
-import { authEnabled, getCurrentUser, isListedEmail } from "./auth";
+import { authEnabled, getCurrentUser } from "./auth";
 
 // With sign-in off, everything lives in one local workspace.
 // With sign-in on, each user gets their own; every query already filters by workspace id.
@@ -15,19 +15,8 @@ export async function getWorkspaceId(): Promise<string> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const own = await findWorkspace(user.id);
-  if (own) return own;
-
-  // Data created before sign-in was turned on stays in the "local" workspace. Hand it to
-  // the first user named in ALLOWED_EMAILS, never to an arbitrary sign-up.
-  if (isListedEmail(user.email)) {
-    const [claimed] = await db
-      .update(workspaces)
-      .set({ ownerId: user.id })
-      .where(eq(workspaces.ownerId, LOCAL_OWNER))
-      .returning({ id: workspaces.id });
-    if (claimed) return claimed.id;
-  }
+  // Data created before sign-in was turned on stays in the "local" workspace and is never
+  // handed to a signed-in user automatically.
   return findOrCreate(user.id);
 }
 

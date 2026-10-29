@@ -8,24 +8,6 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 /** Sign-in is on whenever Supabase is configured. Without it Driftly runs as a single local workspace. */
 export const authEnabled = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-export function isAllowedEmail(email: string | undefined): boolean {
-  const allowed = allowedEmails();
-  if (!allowed.length) return true;
-  return Boolean(email && allowed.includes(email.toLowerCase()));
-}
-
-/** True only when ALLOWED_EMAILS names this address explicitly (not just "anyone may sign in"). */
-export function isListedEmail(email: string | undefined): boolean {
-  return Boolean(email && allowedEmails().includes(email.toLowerCase()));
-}
-
-function allowedEmails(): string[] {
-  return (process.env.ALLOWED_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-}
-
 /** Supabase client bound to the request cookies. Only call when authEnabled. */
 export async function supabaseServer() {
   const store = await cookies();
@@ -52,6 +34,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   if (!authEnabled) return null;
   const supabase = await supabaseServer();
   const { data } = await supabase.auth.getUser();
-  if (!data.user || !isAllowedEmail(data.user.email)) return null;
+  if (!data.user) return null;
   return { id: data.user.id, email: data.user.email ?? "" };
 }

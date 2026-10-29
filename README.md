@@ -83,10 +83,10 @@ Sign-in uses Supabase Auth and turns on when `NEXT_PUBLIC_SUPABASE_URL` and `NEX
 are set (Supabase → Project Settings → API). Without them, `npm run dev` runs as one local workspace with no
 sign-in, and a production build refuses to serve pages (503) so stored credentials are never exposed by accident.
 
-- Each user gets their own workspace. Set `ALLOWED_EMAILS=you@example.com,teammate@example.com` to stop strangers
-  from signing up and using your server to connect to databases.
-- Data created before sign-in was turned on lives in the "local" workspace. The first user **listed in
-  `ALLOWED_EMAILS`** to sign in takes it over.
+- Anyone can sign up, and each user gets their own private workspace.
+- Data created before sign-in was turned on stays in the "local" workspace and isn't given to anyone. To keep it,
+  move it to your account in SQL: `update workspaces set owner_id = '<your auth user id>' where owner_id = 'local';`
+  (only if you haven't signed in yet, or delete your empty workspace first).
 - Supabase → Authentication → URL Configuration: set **Site URL** to your deployed URL and add
   `https://<your-domain>/auth/callback` (and `http://localhost:3000/auth/callback`) to **Redirect URLs**, so
   confirmation emails land back in the app.
@@ -98,7 +98,7 @@ sign-in, and a production build refuses to serve pages (503) so stored credentia
      The direct `db.xxxx.supabase.co:5432` connection runs out of connections on serverless.
    - `CREDENTIALS_KEY`: the **same** key as your local `.env` if you share the database, or saved connection
      passwords can't be decrypted.
-   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `ALLOWED_EMAILS`.
+   - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 3. Apply migrations to that database from your machine (with `DATABASE_URL` pointing at it): `npm run db:migrate`.
 4. Deploy. Every push to `main` redeploys.
 

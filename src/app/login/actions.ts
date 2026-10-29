@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { authEnabled, isAllowedEmail, supabaseServer } from "@/lib/auth";
+import { authEnabled, supabaseServer } from "@/lib/auth";
 
 export type AuthState = { error?: string; message?: string };
 
@@ -23,7 +23,6 @@ export async function signIn(_prev: AuthState, form: FormData): Promise<AuthStat
   if (!authEnabled) redirect("/dashboard");
   const { email, password } = readCredentials(form);
   if (!email || !password) return { error: "Enter your email and password." };
-  if (!isAllowedEmail(email)) return { error: "This email isn't allowed to use this Driftly instance." };
 
   const supabase = await supabaseServer();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -39,7 +38,6 @@ export async function signUp(_prev: AuthState, form: FormData): Promise<AuthStat
   const { email, password } = readCredentials(form);
   if (!email || !password) return { error: "Enter your email and password." };
   if (password.length < 8) return { error: "Use at least 8 characters for the password." };
-  if (!isAllowedEmail(email)) return { error: "This email isn't allowed to use this Driftly instance." };
 
   const origin = (await headers()).get("origin") ?? "";
   const supabase = await supabaseServer();
